@@ -3,7 +3,7 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include"mythreads.h"
-//#define DEBUG
+#define DEBUG
 
 typedef enum Status{
 	MEMORY_UNAVAILABLE,
@@ -28,6 +28,7 @@ typedef struct Job {
 
 struct ThreadPool {
 	ThreadList * threads;
+	ThreadList * rearThreads;
 	unsigned int numThreads;
 	unsigned int waitingThreads;
 	unsigned short isInitialized;
@@ -169,6 +170,35 @@ static void *threadExecutor(void *pl){
 	pthread_exit((void *)COMPLETED);
 }
 
+int addThreadsToPool(ThreadPool *pool, int threads){
+	pthread_mutex_lock(&pool->queuemutex);
+	int rc = 0;
+	pool->numThreads += threads;
+	int i = 0;
+	for(i=0;i<threads;i++){
+
+		ThreadList *newThread = (ThreadList *)malloc(sizeof(ThreadList));
+		newThread->next = NULL;
+		rc = pthread_create(&newThread->thread, NULL, threadExecutor, (void *)pool);
+		if(rc){
+			printf("\n[THREADPOOL:INIT:ERROR] Unable to create thread %d(error code %d)!", (i+1), rc);
+			pool->numThreads--;
+		}
+		else{
+#ifdef DEBUG
+			printf("\n[THREADPOOL:INIT:INFO] Initialized thread %u!", (i+1));
+#endif
+			if(pool->rearThreads==NULL)
+				pool->threads = pool->rearThreads = newThread;
+			else
+				pool->rearThreads->next = newThread;
+			pool->rearThreads = newThread;
+		}
+	}
+	pthread_mutex_unlock(&pool->queuemutex);
+	return rc;
+}
+
 ThreadPool * createPool(unsigned int numThreads){
 	ThreadPool * pool = (ThreadPool *)malloc(sizeof(ThreadPool));
 	if(pool==NULL){
@@ -180,7 +210,7 @@ ThreadPool * createPool(unsigned int numThreads){
 	printf("\n[THREADPOOL:INIT:INFO] Allocated %lu bytes for new pool!", sizeof(ThreadPool));
 #endif
 
-	pool->numThreads = numThreads;
+	pool->numThreads = 0;
 	pool->FRONT = NULL;
 	pool->REAR = NULL;
 	pool->waitingThreads = 0;
@@ -205,33 +235,13 @@ ThreadPool * createPool(unsigned int numThreads){
 	printf("\n[THREADPOOL:INIT:INFO] Successfully initialized all members of the pool!");
 	printf("\n[THREADPOOL:INIT:INFO] Initializing %u threads..",numThreads);
 #endif
-
-	unsigned int i = 0;
-	ThreadList * backup = NULL, * head = NULL, * present = NULL;
-	for(i=0;i<numThreads;i++){
-		present = (ThreadList *)malloc(sizeof(ThreadList));
-		int rc = pthread_create(&present->thread, NULL, threadExecutor, (void *)pool);
-		if(rc)
-			printf("\n[THREADPOOL:INIT:ERROR] Unable to create thread %d(error code %d)!", (i+1), rc);
-		else{
-#ifdef DEBUG
-			printf("\n[THREADPOOL:INIT:INFO] Initialized thread %u!", (i+1));
-#endif
-
-			if(head==NULL)
-				head = present;
-			else
-				backup->next = present;
-			backup = present;
-		}
-	}
+	addThreadsToPool(pool, numThreads);
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Waiting for all threads to start..");
 #endif
 
-	while(!pool->isInitialized);
-	pool->threads = head;
+	while(pool->waitingThreads<numThreads);
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] New threadpool initialized successfully!");
