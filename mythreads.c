@@ -186,6 +186,9 @@ static void *threadExecutor(void *pl){
 			else
 				printf("\n[THREADPOOL:THREAD%u:INFO] Suspending thread!", id);
 #endif
+			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
+
+			pthread_mutex_lock(&pool->condmutex); // Hold the conditional mutex
 			pool->waitingThreads++; // Add yourself as a waiting thread
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Waiting threads %u!", id, pool->waitingThreads);
@@ -210,13 +213,19 @@ static void *threadExecutor(void *pl){
 					pool->isInitialized = 1; // Break the busy wait
 			}
 
-			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
+
 
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Going to conditional wait!", id);
+			fflush(stdout);
 #endif
-			pthread_mutex_lock(&pool->condmutex); // Lock the conditional mutex
 			pthread_cond_wait(&pool->conditional, &pool->condmutex); // Idle wait on conditional
+			
+			/* Woke up! */
+
+			if(pool->waitingThreads>0) // Unregister youself as a waiting thread
+				pool->waitingThreads--;
+
 			pthread_mutex_unlock(&pool->condmutex); // Woke up! Release the mutex
 
 #ifdef DEBUG
@@ -231,10 +240,7 @@ static void *threadExecutor(void *pl){
 #ifdef DEBUG
 			else
 				printQueue(pool->FRONT);
-#endif
-			if(pool->waitingThreads>0) // Registered as waiting thread, decrement the count
-				pool->waitingThreads--;
-#ifdef DEBUG
+
 			printf("\n[THREADPOOL:THREAD%u:INFO] Job recieved! Unlocking the mutex!", id);
 #endif
 			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
@@ -485,15 +491,15 @@ void waitToComplete(ThreadPool *pool){
 		return;
 	}
 	
-	pthread_mutex_lock(&pool->queuemutex);
+	pthread_mutex_lock(&pool->condmutex);
 	if(pool->numThreads==pool->waitingThreads){
 #ifdef DEBUG
 		printf("\n[THREADPOOL:WAIT:INFO] All threads are already idle!");
 #endif
-		pthread_mutex_unlock(&pool->queuemutex);
+		pthread_mutex_unlock(&pool->condmutex);
 		return;
 	}
-	pthread_mutex_unlock(&pool->queuemutex);
+	pthread_mutex_unlock(&pool->condmutex);
 #ifdef DEBUG
 	printf("\n[THREADPOOL:WAIT:INFO] Waiting for all threads to become idle..");
 #endif
@@ -558,13 +564,11 @@ void resumePool(ThreadPool *pool){
 #ifdef DEBUG
 	printf("\n[THREADPOOL:RESM:INFO] Initiating resume..");
 #endif
-	pthread_mutex_lock(&pool->queuemutex);  // Lock the queue
+	pthread_mutex_lock(&pool->condmutex);  // Lock the conditional
 	pool->suspend = 0; // Reset the state
-	pthread_mutex_unlock(&pool->queuemutex); // Release the queue
 #ifdef DEBUG
 	printf("\n[THREADPOOL:RESM:INFO] Waking up all threads..");
 #endif
-	pthread_mutex_lock(&pool->condmutex); // Lock the signal mutex
 	pthread_cond_broadcast(&pool->conditional); // Wake up all threads
 	pthread_mutex_unlock(&pool->condmutex); // Release the mutex
 #ifdef DEBUG
