@@ -151,15 +151,9 @@ static void printQueue(Job *head){
  */
 static void *threadExecutor(void *pl){
 	ThreadPool *pool = (ThreadPool *)pl; // Get the pool
-	int rc = pthread_mutex_lock(&pool->queuemutex); // Lock the mutex
-	if(rc){ // Error
-		printf("\n[THREADPOOL:THREAD:WARNING] Unable to lock the mutex (error code %d)! Will result in wrong thread id!", rc);
-	}
+	pthread_mutex_lock(&pool->queuemutex); // Lock the mutex
 	unsigned int id = ++pool->threadID; // Get an id
-	rc = pthread_mutex_unlock(&pool->queuemutex); // Release the mutex
-	if(rc){
-		printf("\n[THREADPOOL:THREAD%u:WARNING] Unable to unlock the mutex (error code %d)!", id, rc);
-	}
+	pthread_mutex_unlock(&pool->queuemutex); // Release the mutex
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:THREAD%u:INFO] Starting execution loop!", id);
@@ -170,11 +164,8 @@ static void *threadExecutor(void *pl){
 		printf("\n[THREADPOOL:THREAD%u:INFO] Trying to lock the mutex!", id);
 #endif
 
-		rc = pthread_mutex_lock(&pool->queuemutex); //Lock the queue mutex
-		if(rc){
-			printf("\n[THREADPOOL:THREAD%u:ERROR] Unable to lock the mutex (error code %d)!", id, rc);
-			pthread_exit((void *)QUEUE_LOCK_FAILED);
-		}
+		pthread_mutex_lock(&pool->queuemutex); //Lock the queue mutex
+
 		if(pool->removeThreads>0){ // A thread is needed to be removed
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Removal signalled! Exiting the execution loop!", id);
@@ -211,22 +202,14 @@ static void *threadExecutor(void *pl){
 					pool->isInitialized = 1; // Break the busy wait
 			}
 
-			rc = pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
-			if(rc){
-				printf("\n[THREADPOOL:THREAD%u:ERROR] Unable to unlock the mutex (error code %d)!", id, rc);
-				pthread_exit((void *)QUEUE_UNLOCK_FAILED);
-			}
+			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Going to conditional wait!", id);
 #endif
 			pthread_mutex_lock(&pool->condmutex); // Lock the conditional mutex
-			rc = pthread_cond_wait(&pool->conditional, &pool->condmutex); // Idle wait on conditional
+			pthread_cond_wait(&pool->conditional, &pool->condmutex); // Idle wait on conditional
 			pthread_mutex_unlock(&pool->condmutex); // Woke up! Release the mutex
-			if(rc){
-				printf("\n[THREADPOOL:THREAD%u:ERROR] Conditional wait failed (error code %d)!", id, rc);
-				pthread_exit((void *)COND_WAIT_FAILED);
-			}
 
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Woke up from conditional wait!", id);
@@ -246,11 +229,7 @@ static void *threadExecutor(void *pl){
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Job recieved! Unlocking the mutex!", id);
 #endif
-			rc = pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
-			if(rc){
-				printf("\n[THREADPOOL:THREAD%u:ERROR] Unable to unlock the mutex (error code %d)!", id, rc);
-				pthread_exit((void *)QUEUE_UNLOCK_FAILED);
-			}
+			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Executing the job now!", id);
@@ -269,12 +248,12 @@ static void *threadExecutor(void *pl){
 	
 	if(pool->run){ // We exited, but the pool is running! It must be force removal!
 #ifdef DEBUG
-		printf("\n[THREADPOOL:THREAD%u:INFO] Releasing the lock!");
+		printf("\n[THREADPOOL:THREAD%u:INFO] Releasing the lock!", id);
 #endif
 		pool->removeThreads--; // Alright, I'm shutting now
 		pthread_mutex_unlock(&pool->queuemutex); // We broke the loop, release the mutex now
 #ifdef DEBUG
-		printf("\n[THREADPOOL:THREAD%u:INFO] Stopping now..");
+		printf("\n[THREADPOOL:THREAD%u:INFO] Stopping now..", id);
 #endif
 	}
 #ifdef DEBUG
@@ -289,7 +268,7 @@ static void *threadExecutor(void *pl){
  * to the argument pool. See header for more details.
  */
 int addThreadsToPool(ThreadPool *pool, int threads){
-	if(pool==NULL || !pool->isInitialized){ // Sanity check
+	if(pool==NULL){ // Sanity check
 		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
 		return POOL_NOT_INITIALIZED;
 	}
@@ -382,26 +361,28 @@ ThreadPool * createPool(unsigned int numThreads){
 	pool->isInitialized = 0;
 	pool->removeThreads = 0;
 
-	int mrc = pthread_mutex_init(&pool->queuemutex, NULL); // Initialize queue mutex
-	if(mrc){
-		printf("\n[THREADPOOL:INIT:ERROR] Unable to initialize mutex(error code %u)!", mrc);
-		free(pool);
-		return NULL;
-	}
-	mrc = pthread_cond_init(&pool->conditional, NULL); // Initialize idle conditional
-	if(mrc){
-		printf("\n[THREADPOOL:INIT:ERROR] Unable to initialize conditional(error code %u)!", mrc);
-	}
-	mrc = pthread_mutex_init(&pool->condmutex, NULL); // Initialize idle mutex
-	mrc = pthread_mutex_init(&pool->endmutex, NULL); // Initialize end mutex
-	mrc = pthread_cond_init(&pool->endconditional, NULL); // Initialize end conditional
+#ifdef DEBUG
+	printf("\n[THREADPOOL:INIT:INFO] Initializing mutexes!");
+#endif
 
+	pthread_mutex_init(&pool->queuemutex, NULL); // Initialize queue mutex
+	pthread_mutex_init(&pool->condmutex, NULL); // Initialize idle mutex
+	pthread_mutex_init(&pool->endmutex, NULL); // Initialize end mutex
+
+#ifdef DEBUG
+	printf("\n[THREADPOOL:INIT:INFO] Initiliazing conditionals!");
+#endif
+
+	pthread_cond_init(&pool->endconditional, NULL); // Initialize end conditional
+	pthread_cond_init(&pool->conditional, NULL); // Initialize idle conditional
+	
 	pool->run = 1; // Start the pool
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Successfully initialized all members of the pool!");
 	printf("\n[THREADPOOL:INIT:INFO] Initializing %u threads..",numThreads);
 #endif
+
 	addThreadsToPool(pool, numThreads); // Add threads to the pool
 
 #ifdef DEBUG
@@ -449,12 +430,8 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 	printf("\n[THREADPOOL:EXEC:INFO] Locking the queue for insertion of the job!");
 #endif
 
-	int rc = pthread_mutex_lock(&pool->queuemutex); // Inserting the job, lock the queue
-	if(rc){ // Oops!
-		printf("\n[THREADPOOL:EXEC:ERROR] Unable to lock the queue!");
-		free(newJob);
-		return QUEUE_LOCK_FAILED;
-	}
+	pthread_mutex_lock(&pool->queuemutex); // Inserting the job, lock the queue
+
 	if(pool->FRONT==NULL) // This is the first job
 		pool->FRONT = pool->REAR = newJob;
 	else // There are other jobs
@@ -470,21 +447,15 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 		printf("\n[THREADPOOL:EXEC:INFO] Signaling any idle thread!");
 #endif
 		pthread_mutex_lock(&pool->condmutex); // Lock the mutex
-		rc = pthread_cond_signal(&pool->conditional); // Signal the conditional
+		pthread_cond_signal(&pool->conditional); // Signal the conditional
 		pthread_mutex_unlock(&pool->condmutex); // Release the mutex
-		if(rc){
-			printf("\n[THREADPOOL:EXEC:WARNING] Unable to signal any idle threads!");
-		}
 
 #ifdef DEBUG
 		printf("\n[THREADPOOL:EXEC:INFO] Signaling successful!");
 #endif
 	}
-	rc = pthread_mutex_unlock(&pool->queuemutex); // Finally, release the queue
-	if(rc){
-		printf("\n[THREADPOOL:EXEC:ERROR] Unable to unlock the queue(error code %d)! Pool should be destroyed now!", rc);
-		return QUEUE_UNLOCK_FAILED;
-	}
+	
+	pthread_mutex_unlock(&pool->queuemutex); // Finally, release the queue
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:EXEC:INFO] Unlocked the mutex!");
@@ -523,11 +494,12 @@ void destroyPool(ThreadPool *pool){
 	printf("\n[THREADPOOL:EXIT:INFO] Trying to wakeup all waiting threads..");
 #endif
 	pool->run = 0; // Stop the thread
-	int rc = pthread_cond_broadcast(&pool->conditional); // Wake up all idle threads
-	if(rc){
-		printf("\n[THREADPOOL:EXIT:WARNING] Broadcasting failed! One or more threads may still be active!");
-	}
 
+	pthread_mutex_lock(&pool->condmutex);
+	pthread_cond_broadcast(&pool->conditional); // Wake up all idle threads
+	pthread_mutex_unlock(&pool->condmutex);
+
+	int rc;
 #ifdef DEBUG
 	printf("\n[THREADPOOL:EXIT:INFO] Waiting for all threads to exit..");
 #endif
@@ -575,23 +547,23 @@ void destroyPool(ThreadPool *pool){
 	}
 
 #ifdef DEBUG
-	printf("\n[THREADPOOL:EXIT:INFO] Destroying conditional..");
+	printf("\n[THREADPOOL:EXIT:INFO] Destroying conditionals..");
 #endif
 	rc = pthread_cond_destroy(&pool->conditional); // Destroying idle conditional
+	rc = pthread_cond_destroy(&pool->endconditional); // Destroying end conditional
 	if(rc)
-		printf("\n[THREADPOOL:EXIT:WARNING] Unable to destroy the conditional (error code %d)!", rc);
+		printf("\n[THREADPOOL:EXIT:WARNING] Unable to destroy one or more conditionals (error code %d)!", rc);
 
 #ifdef DEBUG
-	printf("\n[THREADPOOL:EXIT:INFO] Destroying the mutex..");
+	printf("\n[THREADPOOL:EXIT:INFO] Destroying the mutexes..");
 #endif
 
 	rc = pthread_mutex_destroy(&pool->queuemutex); // Destroying queue lock
+	rc = pthread_mutex_destroy(&pool->condmutex); // Destroying idle lock
+	rc = pthread_mutex_destroy(&pool->endmutex); // Destroying end lock
 	if(rc)
-		printf("\n[THREADPOOL:EXIT:WARNING] Unable to destroy the conditional (error code %d)!", rc);
+		printf("\n[THREADPOOL:EXIT:WARNING] Unable to destroy one or mutexes (error code %d)!", rc);
 
-	pthread_mutex_destroy(&pool->condmutex); // Destroying idle lock
-	pthread_mutex_destroy(&pool->endmutex); // Destroying end lock
-	pthread_cond_destroy(&pool->endconditional); // Destroying end conditional
 #ifdef DEBUG
 	printf("\n[THREADPOOL:EXIT:INFO] Releasing memory for the pool..");
 #endif
