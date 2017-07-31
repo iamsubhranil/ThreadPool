@@ -1,2 +1,2 @@
 mythreads: mythreads.c
-	clang -g test.c mythreads.c -lpthread -o test
+	clang -g mytest.c mythreads.c -lpthread -o mytest

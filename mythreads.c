@@ -3,7 +3,7 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include"mythreads.h"
-#define DEBUG
+//#define DEBUG
 
 typedef enum Status{
 	MEMORY_UNAVAILABLE,
@@ -30,6 +30,7 @@ struct ThreadPool {
 	ThreadList * threads;
 	ThreadList * rearThreads;
 	unsigned int numThreads;
+	unsigned int removeThreads;
 	unsigned int waitingThreads;
 	unsigned short isInitialized;
 	pthread_mutex_t queuemutex;
@@ -79,6 +80,12 @@ static void *threadExecutor(void *pl){
 			printf("\n[THREADPOOL:THREAD%u:ERROR] Unable to lock the mutex (error code %d)!", id, rc);
 			pthread_exit((void *)QUEUE_LOCK_FAILED);
 		}
+		if(pool->removeThreads>0){
+#ifdef DEBUG
+			printf("\n[THREADPOOL:THREAD%u:INFO] Removal signalled! Exiting the execution loop!", id);
+#endif
+			break;
+		}
 		Job *presentJob = pool->FRONT;
 		if(presentJob==NULL){
 
@@ -116,7 +123,7 @@ static void *threadExecutor(void *pl){
 			}
 
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Going to conditional wait!\n", id);
+			printf("\n[THREADPOOL:THREAD%u:INFO] Going to conditional wait!", id);
 #endif
 			pthread_mutex_lock(&pool->condmutex);
 			rc = pthread_cond_wait(&pool->conditional, &pool->condmutex);
@@ -163,8 +170,20 @@ static void *threadExecutor(void *pl){
 		}
 	}
 
+	
+	if(pool->run){
 #ifdef DEBUG
-	printf("\n[THREADPOOL:THREAD%u:INFO] Pool has been stopped! Exiting now..", id);
+		printf("\n[THREADPOOL:THREAD%u:INFO] Releasing the lock!");
+#endif
+		pool->removeThreads--;
+		pthread_mutex_unlock(&pool->queuemutex);
+#ifdef DEBUG
+		printf("\n[THREADPOOL:THREAD%u:INFO] Stopping now..");
+#endif
+	}
+#ifdef DEBUG
+	else
+		printf("\n[THREADPOOL:THREAD%u:INFO] Pool has been stopped! Exiting now..", id);
 #endif
 
 	pthread_exit((void *)COMPLETED);
@@ -199,6 +218,27 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 	return rc;
 }
 
+void removeThreadFromPool(ThreadPool *pool){
+#ifdef DEBUG
+	printf("\n[THREADPOOL:REM:INFO] Acquiring the lock!");
+#endif
+	pthread_mutex_lock(&pool->queuemutex);
+#ifdef DEBUG
+	printf("\n[THREADPOOL:REM:INFO] Incrementing the removal count");
+#endif
+	pool->removeThreads++;
+	pthread_mutex_unlock(&pool->queuemutex);
+#ifdef DEBUG
+	printf("\n[THREADPOOL:REM:INFO] Waking up any sleeping threads!");
+#endif
+	pthread_mutex_lock(&pool->condmutex);
+	pthread_cond_signal(&pool->conditional);
+	pthread_mutex_unlock(&pool->condmutex);
+#ifdef DEBUG
+	printf("\n[THREADPOOL:REM:INFO] Signalling complete!");
+#endif
+}
+
 ThreadPool * createPool(unsigned int numThreads){
 	ThreadPool * pool = (ThreadPool *)malloc(sizeof(ThreadPool));
 	if(pool==NULL){
@@ -215,6 +255,7 @@ ThreadPool * createPool(unsigned int numThreads){
 	pool->REAR = NULL;
 	pool->waitingThreads = 0;
 	pool->isInitialized = 0;
+	pool->removeThreads = 0;
 	int mrc = pthread_mutex_init(&pool->queuemutex, NULL);
 	if(mrc){
 		printf("\n[THREADPOOL:INIT:ERROR] Unable to initialize mutex(error code %u)!", mrc);

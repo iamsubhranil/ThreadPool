@@ -7,5 +7,6 @@ ThreadPool * createPool(unsigned int);
 void waitToComplete(ThreadPool *);
 void destroyPool(ThreadPool *);
 int addJobToPool(ThreadPool *, void (*func)(void *), void *);
-
+int addThreadsToPool(ThreadPool *, int);
+void removeThreadFromPool(ThreadPool *);
 #endif
