@@ -4,7 +4,7 @@
 #include"mythreads.h" // API header
 
 
-//#define DEBUG // The debug switch
+#define DEBUG // The debug switch
 
 /* A singly linked list of threads. This list
  * gives tremendous flexibility managing the 
@@ -484,10 +484,25 @@ void waitToComplete(ThreadPool *pool){
 		printf("\n[THREADPOOL:WAIT:ERROR] Pool already stopped!");
 		return;
 	}
-
+	
+	pthread_mutex_lock(&pool->queuemutex);
+	if(pool->numThreads==pool->waitingThreads){
+#ifdef DEBUG
+		printf("\n[THREADPOOL:WAIT:INFO] All threads are already idle!");
+#endif
+		pthread_mutex_unlock(&pool->queuemutex);
+		return;
+	}
+	pthread_mutex_unlock(&pool->queuemutex);
+#ifdef DEBUG
+	printf("\n[THREADPOOL:WAIT:INFO] Waiting for all threads to become idle..");
+#endif
 	pthread_mutex_lock(&pool->endmutex); // Lock the mutex
 	pthread_cond_wait(&pool->endconditional, &pool->endmutex); // Wait for end signal
 	pthread_mutex_unlock(&pool->endmutex); // Unlock the mutex
+#ifdef DEBUG
+	printf("\n[THREADPOOL:WAIT:INFO] All threads are idle now!");
+#endif
 }
 
 /* Suspend all active threads in a pool. See header
