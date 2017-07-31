@@ -5,7 +5,7 @@ This threadpool implementation is much faster, and much feature rich than other 
 1. Small initialization cost. When the function `createPool` returns, it is also guaranteed that all threads are fully initialized and in waiting state.
 2. Add hundreds of jobs, asynchronously. The function `addJobToPool` is implemented to guarantee consistency and fast response.
 3. Dynamically add and/or remove threads at runtime. You can add as many threads as you want using `addThreadsToPool` function, or remove a thread using `removeThreadFromPool` function, AT RUNTIME. Just remember, for these functions to work properly, the worker function needs to be as atomic as possible. No threads will be removed if all threads are presently busy. Also, to feel the effect of the new thread, there must be some work to be done.
-4. Easy suspend and resume. You can suspend the pool anytime using `suspend`, and resume where you left off using `resume`.
+4. Easy suspend and resume. You can suspend the pool anytime using `suspendPool`, and resume where you left off using `resumePool`.
 5. Flexible stopping. You can stop the pool in two ways : a) Stop recieving new jobs, but continue existing jobs and then exit and b) Stop recieving new jobs, and exit as immediately as possible. Remeber, for the latter function to work, the work needs to be atomic. No threads will be force stopped if it is currently executing a function.
 ##### Proposed additions :
 1. Implement force-stop [Low priority]
