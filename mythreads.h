@@ -20,6 +20,8 @@ typedef enum Status{
 	SIGNALLING_FAILED,
 	BROADCASTING_FAILED,
 	COND_WAIT_FAILED,
+	POOL_NOT_INITIALIZED,
+	POOL_STOPPED,
 	COMPLETED	
 } Status;
 
@@ -87,6 +89,28 @@ int addJobToPool(ThreadPool *, void (*func)(void *), void *);
  * codes can be compared using the Status enum above.
  */
 int addThreadsToPool(ThreadPool *, int);
+
+/* Suspend all currently executing threads in the pool.
+ *
+ * This method pauses all currently executing threads in
+ * the pool. When the method call returns, it is guaranteed
+ * that all threads have been suspended at appropiate
+ * breakpoints. However, if a thread is presently executing,
+ * it is not forcefully suspended. Rather, the call waits
+ * till the thread completes the present job, and then
+ * halts the thread.
+ */
+void suspendPool(ThreadPool *);
+
+/* Resume a suspended pool.
+ *
+ * This method resumes a pool, aynchronously, if and only 
+ * if the pool was suspended before. When the method returns,
+ * it is guaranteed the all the threads of the pool will
+ * wake up from suspend very soon in future. This method 
+ * fails if the pool was not previously suspended.
+ */
+void resumePool(ThreadPool *);
 
 /* Remove an existing thread from the pool.
  *

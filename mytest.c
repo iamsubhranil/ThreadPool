@@ -17,11 +17,13 @@ int main(){
 	for(i=0;i<size;i++)
 		addJobToPool(pool, &longJob, NULL);
 	char choice = '1';
-	while(choice>'0' && choice<'5'){
+	while(choice>'0' && choice<'7'){
 		printf("\n[CHOICE:1] Add another thread");
 		printf("\n[CHOICE:2] Remove an existing thread");
 		printf("\n[CHOICE:3] Wait for the pool to complete");
 		printf("\n[CHOICE:4] Stop the pool");
+		printf("\n[CHOICE:5] Suspend the pool");
+		printf("\n[CHOICE:6] Resume the pool");
 		printf("\n[CHOICE:INPUT] ");
 		scanf(" %c", &choice);
 		switch(choice){
@@ -32,6 +34,10 @@ int main(){
 			case '3': waitToComplete(pool);
 				  break;
 			case '4': destroyPool(pool);
+				  break;
+			case '5': suspendPool(pool);
+				  break;
+			case '6': resumePool(pool);
 				  break;
 			default: break;
 		}

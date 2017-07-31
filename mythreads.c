@@ -129,6 +129,8 @@ struct ThreadPool {
 	 * queue.
 	 */
 	pthread_cond_t endconditional;
+
+	unsigned short suspend;
 };
 
 /* Prints the size of the job queue. Only
@@ -173,16 +175,19 @@ static void *threadExecutor(void *pl){
 			break; // Exit the loop
 		}
 		Job *presentJob = pool->FRONT; // Get the first job
-		if(presentJob==NULL){ // Queue is empty!
+		if(presentJob==NULL || pool->suspend){ // Queue is empty!
 
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Queue is empty! Unlocking the mutex!", id);
+			if(presentJob==NULL)
+				printf("\n[THREADPOOL:THREAD%u:INFO] Queue is empty! Unlocking the mutex!", id);
+			else
+				printf("\n[THREADPOOL:THREAD%u:INFO] Suspending thread!");
 #endif
 			pool->waitingThreads++; // Add yourself as a waiting thread
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Waiting threads %u!", id, pool->waitingThreads);
 #endif
-			if(pool->waitingThreads==pool->numThreads){ // All threads are idle
+			if(!pool->suspend && pool->waitingThreads==pool->numThreads){ // All threads are idle
 #ifdef DEBUG
 				printf("\n[THREADPOOL:THREAD%u:INFO] All threads are idle now!", id);
 #endif
@@ -360,6 +365,7 @@ ThreadPool * createPool(unsigned int numThreads){
 	pool->waitingThreads = 0;
 	pool->isInitialized = 0;
 	pool->removeThreads = 0;
+	pool->suspend = 0;
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Initializing mutexes!");
@@ -479,6 +485,73 @@ void waitToComplete(ThreadPool *pool){
 	pthread_mutex_lock(&pool->endmutex); // Lock the mutex
 	pthread_cond_wait(&pool->endconditional, &pool->endmutex); // Wait for end signal
 	pthread_mutex_unlock(&pool->endmutex); // Unlock the mutex
+}
+
+/* Suspend all active threads in a pool. See header
+ * for more details.
+ */
+void suspendPool(ThreadPool *pool){
+	if(pool==NULL || !pool->isInitialized){ // Sanity check
+		printf("\n[THREADPOOL:SUSP:ERROR] Pool is not initialized!");
+		return;
+	}
+	if(!pool->run){ // Pool is stopped
+		printf("\n[THREADPOOL:SUSP:ERROR] Pool already stopped!");
+		return;
+	}
+	if(pool->suspend){ // Pool is already suspended
+		printf("\n[THREADPOOL:SUSP:ERROR] Pool already suspended!");
+		return;
+	}
+
+#ifdef DEBUG
+	printf("\n[THREADPOOL:SUSP:INFO] Initiating suspend..");
+#endif
+	pthread_mutex_lock(&pool->queuemutex); // Lock the queue
+	pool->suspend = 1; // Present the wish for suspension
+	pthread_mutex_unlock(&pool->queuemutex); // Release the queue
+#ifdef DEBUG
+	printf("\n[THREADPOOL:SUSP:INFO] Waiting for all threads to be idle..");
+	fflush(stdout);
+#endif
+	while(pool->waitingThreads<pool->numThreads); // Busy wait till all threads are idle
+#ifdef DEBUG
+	printf("\n[THREADPOOL:SUSP:INFO] Successfully suspended all threads!");
+#endif
+}
+
+/* Resume a suspended pool. See header for more
+ * details.
+ */
+void resumePool(ThreadPool *pool){
+	if(pool==NULL || !pool->isInitialized){ // Sanity check
+		printf("\n[THREADPOOL:RESM:ERROR] Pool is not initialized!");
+		return;
+	}
+	if(!pool->run){ // Pool stopped
+		printf("\n[THREADPOOL:RESM:ERROR] Pool is not running!");
+		return;
+	}
+	if(!pool->suspend){ // Pool is not suspended
+		printf("\n[THREADPOOL:RESM:WARNING] Pool is not suspended!");
+		return;
+	}
+
+#ifdef DEBUG
+	printf("\n[THREADPOOL:RESM:INFO] Initiating resume..");
+#endif
+	pthread_mutex_lock(&pool->queuemutex);  // Lock the queue
+	pool->suspend = 0; // Reset the state
+	pthread_mutex_unlock(&pool->queuemutex); // Release the queue
+#ifdef DEBUG
+	printf("\n[THREADPOOL:RESM:INFO] Waking up all threads..");
+#endif
+	pthread_mutex_lock(&pool->condmutex); // Lock the signal mutex
+	pthread_cond_broadcast(&pool->conditional); // Wake up all threads
+	pthread_mutex_unlock(&pool->condmutex); // Release the mutex
+#ifdef DEBUG
+	printf("\n[THREADPOOL:RESM:INFO] Resume complete!");
+#endif
 }
 
 /* Destroy the pool. See header for more details.
