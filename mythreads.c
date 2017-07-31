@@ -129,7 +129,10 @@ struct ThreadPool {
 	 * queue.
 	 */
 	pthread_cond_t endconditional;
-
+	
+	/* Variable to impose and withdraw
+	 * the suspend state.
+	 */
 	unsigned short suspend;
 };
 
@@ -274,7 +277,7 @@ static void *threadExecutor(void *pl){
  */
 int addThreadsToPool(ThreadPool *pool, int threads){
 	if(pool==NULL){ // Sanity check
-		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		printf("\n[THREADPOOL:ADD:ERROR] Pool is not initialized!");
 		return POOL_NOT_INITIALIZED;
 	}
 	if(!pool->run){
@@ -315,7 +318,7 @@ int addThreadsToPool(ThreadPool *pool, int threads){
  */
 void removeThreadFromPool(ThreadPool *pool){
 	if(pool==NULL || !pool->isInitialized){
-		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		printf("\n[THREADPOOL:REM:ERROR] Pool is not initialized!");
 		return;
 	}
 	if(!pool->run){
@@ -410,7 +413,7 @@ ThreadPool * createPool(unsigned int numThreads){
  */
 int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 	if(pool==NULL || !pool->isInitialized){ // Sanity check
-		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		printf("\n[THREADPOOL:EXEC:ERROR] Pool is not initialized!");
 		return POOL_NOT_INITIALIZED;
 	}
 	if(!pool->run){
@@ -474,7 +477,7 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
  */
 void waitToComplete(ThreadPool *pool){
 	if(pool==NULL || !pool->isInitialized){ // Sanity check
-		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		printf("\n[THREADPOOL:WAIT:ERROR] Pool is not initialized!");
 		return;
 	}
 	if(!pool->run){
@@ -559,14 +562,14 @@ void resumePool(ThreadPool *pool){
  */
 void destroyPool(ThreadPool *pool){
 	if(pool==NULL || !pool->isInitialized){ // Sanity check
-		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		printf("\n[THREADPOOL:EXIT:ERROR] Pool is not initialized!");
 		return;
 	}
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:EXIT:INFO] Trying to wakeup all waiting threads..");
 #endif
-	pool->run = 0; // Stop the thread
+	pool->run = 0; // Stop the pool
 
 	pthread_mutex_lock(&pool->condmutex);
 	pthread_cond_broadcast(&pool->conditional); // Wake up all idle threads
