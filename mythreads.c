@@ -241,7 +241,7 @@ ThreadPool * createPool(unsigned int numThreads){
 	printf("\n[THREADPOOL:INIT:INFO] Waiting for all threads to start..");
 #endif
 
-	while(pool->waitingThreads<numThreads);
+	while(!pool->isInitialized);
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] New threadpool initialized successfully!");
