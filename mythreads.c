@@ -184,7 +184,7 @@ static void *threadExecutor(void *pl){
 			if(presentJob==NULL)
 				printf("\n[THREADPOOL:THREAD%u:INFO] Queue is empty! Unlocking the mutex!", id);
 			else
-				printf("\n[THREADPOOL:THREAD%u:INFO] Suspending thread!");
+				printf("\n[THREADPOOL:THREAD%u:INFO] Suspending thread!", id);
 #endif
 			pool->waitingThreads++; // Add yourself as a waiting thread
 #ifdef DEBUG
