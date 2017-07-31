@@ -289,6 +289,15 @@ static void *threadExecutor(void *pl){
  * to the argument pool. See header for more details.
  */
 int addThreadsToPool(ThreadPool *pool, int threads){
+	if(pool==NULL || !pool->isInitialized){ // Sanity check
+		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		return POOL_NOT_INITIALIZED;
+	}
+	if(!pool->run){
+		printf("\n[THREADPOOL:ADD:ERROR] Pool already stopped!");
+		return POOL_STOPPED;
+	}
+
 	pthread_mutex_lock(&pool->queuemutex); // Lock the queue mutex
 	int rc = 0;
 	pool->numThreads += threads; // Increment the thread count to prevent idle signal
@@ -299,7 +308,7 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 		newThread->next = NULL;
 		rc = pthread_create(&newThread->thread, NULL, threadExecutor, (void *)pool); // Start the thread
 		if(rc){
-			printf("\n[THREADPOOL:INIT:ERROR] Unable to create thread %d(error code %d)!", (i+1), rc);
+			printf("\n[THREADPOOL:ADD:ERROR] Unable to create thread %d(error code %d)!", (i+1), rc);
 			pool->numThreads--;
 		}
 		else{
@@ -321,6 +330,15 @@ int addThreadsToPool(ThreadPool *pool, int threads){
  * argument pool. See header for more details.
  */
 void removeThreadFromPool(ThreadPool *pool){
+	if(pool==NULL || !pool->isInitialized){
+		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		return;
+	}
+	if(!pool->run){
+		printf("\n[THREADPOOL:REM:WARNING] Removing thread from a stopped pool!");
+		return;
+	}
+
 #ifdef DEBUG
 	printf("\n[THREADPOOL:REM:INFO] Acquiring the lock!");
 #endif
@@ -404,6 +422,15 @@ ThreadPool * createPool(unsigned int numThreads){
  *
  */
 int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
+	if(pool==NULL || !pool->isInitialized){ // Sanity check
+		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		return POOL_NOT_INITIALIZED;
+	}
+	if(!pool->run){
+		printf("\n[THREADPOOL:EXEC:ERROR] Trying to add a job in a stopped pool!");
+		return POOL_STOPPED;
+	}
+
 	Job *newJob = (Job *)malloc(sizeof(Job)); // Allocate memory
 	if(newJob==NULL){ // Who uses 2KB RAM nowadays?
 		printf("\n[THREADPOOL:EXEC:ERROR] Unable to allocate memory for new job!");
@@ -469,6 +496,15 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
  * for more details.
  */
 void waitToComplete(ThreadPool *pool){
+	if(pool==NULL || !pool->isInitialized){ // Sanity check
+		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		return;
+	}
+	if(!pool->run){
+		printf("\n[THREADPOOL:WAIT:ERROR] Pool already stopped!");
+		return;
+	}
+
 	pthread_mutex_lock(&pool->endmutex); // Lock the mutex
 	pthread_cond_wait(&pool->endconditional, &pool->endmutex); // Wait for end signal
 	pthread_mutex_unlock(&pool->endmutex); // Unlock the mutex
@@ -478,6 +514,11 @@ void waitToComplete(ThreadPool *pool){
  *
  */
 void destroyPool(ThreadPool *pool){
+	if(pool==NULL || !pool->isInitialized){ // Sanity check
+		printf("\n[THREADPOOL:ERROR] Pool is not initialized!");
+		return;
+	}
+
 #ifdef DEBUG
 	printf("\n[THREADPOOL:EXIT:INFO] Trying to wakeup all waiting threads..");
 #endif
