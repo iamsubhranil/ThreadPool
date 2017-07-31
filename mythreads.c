@@ -175,6 +175,9 @@ static void *threadExecutor(void *pl){
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Removal signalled! Exiting the execution loop!", id);
 #endif
+			pthread_mutex_lock(&pool->condmutex);
+			pool->waitingThreads++; // Register as forever waiting thread
+			pthread_mutex_unlock(&pool->condmutex);
 			break; // Exit the loop
 		}
 		Job *presentJob = pool->FRONT; // Get the first job
@@ -291,9 +294,16 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 		return POOL_STOPPED;
 	}
 
-	pthread_mutex_lock(&pool->queuemutex); // Lock the queue mutex
 	int rc = 0;
+#ifdef DEBUG
+	printf("\n[THREADPOOL:ADD:INFO] Holding the condmutex..");
+#endif
+	pthread_mutex_lock(&pool->condmutex);
 	pool->numThreads += threads; // Increment the thread count to prevent idle signal
+	pthread_mutex_unlock(&pool->condmutex);
+#ifdef DEBUG
+	printf("\n[THREADPOOL:ADD:INFO] Speculative increment done!");
+#endif
 	int i = 0;
 	for(i=0;i<threads;i++){
 
@@ -302,11 +312,13 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 		rc = pthread_create(&newThread->thread, NULL, threadExecutor, (void *)pool); // Start the thread
 		if(rc){
 			printf("\n[THREADPOOL:ADD:ERROR] Unable to create thread %d(error code %d)!", (i+1), rc);
+			pthread_mutex_lock(&pool->condmutex);
 			pool->numThreads--;
+			pthread_mutex_unlock(&pool->condmutex);
 		}
 		else{
 #ifdef DEBUG
-			printf("\n[THREADPOOL:INIT:INFO] Initialized thread %u!", (i+1));
+			printf("\n[THREADPOOL:ADD:INFO] Initialized thread %u!", (i+1));
 #endif
 			if(pool->rearThreads==NULL) // This is the first thread
 				pool->threads = pool->rearThreads = newThread;
@@ -315,7 +327,6 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 			pool->rearThreads = newThread; // This is definitely the last thread
 		}
 	}
-	pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 	return rc;
 }
 
