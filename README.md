@@ -10,3 +10,6 @@ This threadpool implementation is much faster, and much feature rich than other 
 ##### Proposed additions :
 1. Implement force-stop [Low priority]
 2. You tell me
+>##### This API is also fully leak free, tested extensively using valgrind
+##### License and permissions :
+It is a GPL'd project. Use it anyhow, anywhere. Just mention this original repo and me as the original author of the project.
