@@ -4,7 +4,7 @@
 #include"mythreads.h" // API header
 
 
-#define DEBUG // The debug switch
+//#define DEBUG // The debug switch
 
 /* A singly linked list of threads. This list
  * gives tremendous flexibility managing the 
@@ -67,14 +67,14 @@ struct ThreadPool {
 	 * the initialization of the pool, whichever
 	 * applicable.
 	 */
-	unsigned int waitingThreads;
+	volatile unsigned int waitingThreads;
 
 	/* Denotes whether the pool is presently
 	 * initalized or not. This variable is used to
 	 * busy wait after the creation of the pool
 	 * to ensure all threads are in waiting state.
 	 */
-	unsigned short isInitialized;
+	volatile unsigned short isInitialized;
 
 	/* The main mutex for the job queue. All
 	 * operations on the queue is done after locking
@@ -292,6 +292,10 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 	if(!pool->run){
 		printf("\n[THREADPOOL:ADD:ERROR] Pool already stopped!");
 		return POOL_STOPPED;
+	}
+	if(threads<1){
+		printf("\n[THREADPOOL:ADD:WARNING] Tried to add invalid number of threads %d!", threads);
+		return INVALID_NUMBER;
 	}
 
 	int rc = 0;
