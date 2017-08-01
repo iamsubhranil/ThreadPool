@@ -390,6 +390,8 @@ ThreadPool * createPool(unsigned int numThreads){
 	pool->isInitialized = 0;
 	pool->removeThreads = 0;
 	pool->suspend = 0;
+	pool->rearThreads = NULL;
+	pool->threads = NULL;
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Initializing mutexes!");
