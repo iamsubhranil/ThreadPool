@@ -618,8 +618,6 @@ void destroyPool(ThreadPool *pool){
 
 	ThreadList *list = pool->threads, *backup = NULL; // For travsersal
 
-	Status stat;
-	void *c = &stat;
 	unsigned int i = 0;
 	while(list!=NULL){
 
@@ -627,7 +625,7 @@ void destroyPool(ThreadPool *pool){
 		printf("\n[THREADPOOL:EXIT:INFO] Joining thread %u..", i);
 #endif
 
-		rc = pthread_join(list->thread, &c); //  Wait for ith thread to join
+		rc = pthread_join(list->thread, NULL); //  Wait for ith thread to join
 		if(rc)
 			printf("\n[THREADPOOL:EXIT:WARNING] Unable to join THREAD%u!", i);
 
