@@ -438,12 +438,17 @@ ThreadPool * createPool(unsigned int numThreads){
 	printf("\n[THREADPOOL:INIT:INFO] Successfully initialized all members of the pool!");
 	printf("\n[THREADPOOL:INIT:INFO] Initializing %u threads..",numThreads);
 #endif
-
-	addThreadsToPool(pool, numThreads); // Add threads to the pool
-
+	
+	if(numThreads<1){
+		printf("\n[THREADPOOL:INIT:WARNING] Starting with no threads!");
+		pool->isInitialized = 1;
+	}
+	else{
+		addThreadsToPool(pool, numThreads); // Add threads to the pool
 #ifdef DEBUG
-	printf("\n[THREADPOOL:INIT:INFO] Waiting for all threads to start..");
+		printf("\n[THREADPOOL:INIT:INFO] Waiting for all threads to start..");
 #endif
+	}
 
 	while(!pool->isInitialized); // Busy wait till the pool is initialized
 
