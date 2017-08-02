@@ -17,6 +17,8 @@
 #ifndef MYTHREADS_H
 #define MYTHREADS_H
 
+//#define DEBUG // The debug switch
+
 /* The main pool structure
  * 
  * To find member descriptions, see mythreads.c .

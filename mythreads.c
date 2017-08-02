@@ -20,8 +20,6 @@
 #include"mythreads.h" // API header
 
 
-//#define DEBUG // The debug switch
-
 /* A singly linked list of threads. This list
  * gives tremendous flexibility managing the 
  * threads at runtime.
