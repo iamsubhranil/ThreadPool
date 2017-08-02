@@ -471,6 +471,10 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 		printf("\n[THREADPOOL:EXEC:ERROR] Trying to add a job in a stopped pool!");
 		return POOL_STOPPED;
 	}
+	if(pool->run==2){
+		printf("\n[THREADPOOL:EXEC:WARNING] Another thread is waiting for the pool to complete!");
+		return WAIT_ISSUED;
+	}
 
 	Job *newJob = (Job *)malloc(sizeof(Job)); // Allocate memory
 	if(newJob==NULL){ // Who uses 2KB RAM nowadays?
@@ -537,6 +541,8 @@ void waitToComplete(ThreadPool *pool){
 		printf("\n[THREADPOOL:WAIT:ERROR] Pool already stopped!");
 		return;
 	}
+
+	pool->run = 2;
 	
 	pthread_mutex_lock(&pool->condmutex);
 	if(pool->numThreads==pool->waitingThreads){
@@ -544,6 +550,7 @@ void waitToComplete(ThreadPool *pool){
 		printf("\n[THREADPOOL:WAIT:INFO] All threads are already idle!");
 #endif
 		pthread_mutex_unlock(&pool->condmutex);
+		pool->run = 1;
 		return;
 	}
 	pthread_mutex_unlock(&pool->condmutex);
@@ -556,6 +563,7 @@ void waitToComplete(ThreadPool *pool){
 #ifdef DEBUG
 	printf("\n[THREADPOOL:WAIT:INFO] All threads are idle now!");
 #endif
+	pool->run = 1;
 }
 
 /* Suspend all active threads in a pool. See header
