@@ -155,20 +155,6 @@ struct ThreadPool {
 	_Atomic unsigned long jobCount;
 };
 
-/* Prints the size of the job queue. Only
- * used when in DEBUG.
- *
- */
-static void printQueue(Job *head){
-	Job *temp = head;
-	int i = 0;
-	while(temp){
-		temp = temp->next;
-		i++;
-	}
-	printf("\n[THREADPOOL:STAT:INFO] Remaining jobs : %d", i);
-}
-
 /* The core function which is executed in each thread.
  * A pointer to the pool is passed as the argument,
  * which controls the flow of execution of the thread.
@@ -257,15 +243,17 @@ static void *threadExecutor(void *pl){
 		else{ // There is a job in the pool
 
 			pool->FRONT = pool->FRONT->next; // Shift FRONT to right
+			pool->jobCount--; // Decrement the count
+			
 			if(pool->FRONT==NULL) // No jobs next
 				pool->REAR = NULL; // Reset the REAR
 #ifdef DEBUG
 			else
-				printQueue(pool->FRONT);
+				printf("\n[THREADPOOL:THREAD%u:INFO] Remaining jobs : %lu", id, pool->jobCount);
 
 			printf("\n[THREADPOOL:THREAD%u:INFO] Job recieved! Unlocking the mutex!", id);
 #endif
-			pool->jobCount--; // Decrement the count
+			
 
 			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 
