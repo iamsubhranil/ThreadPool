@@ -41,6 +41,7 @@ typedef enum Status{
 	POOL_NOT_INITIALIZED,
 	POOL_STOPPED,
 	INVALID_NUMBER,
+	WAIT_ISSUED,
 	COMPLETED	
 } Status;
 
