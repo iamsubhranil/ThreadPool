@@ -271,6 +271,7 @@ static void *threadExecutor(void *pl){
 
 #ifdef DEBUG
 			printf("\n[THREADPOOL:THREAD%u:INFO] Executing the job now!", id);
+			fflush(stdout);
 #endif
 
 			presentJob->function(presentJob->args); // Execute the job
