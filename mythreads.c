@@ -195,7 +195,7 @@ static void *threadExecutor(void *pl){
 			printf("\n[THREADPOOL:THREAD%u:INFO] Removal signalled! Exiting the execution loop!", id);
 #endif
 			pthread_mutex_lock(&pool->condmutex);
-			pool->waitingThreads++; // Register as forever waiting thread
+			pool->numThreads--;
 			pthread_mutex_unlock(&pool->condmutex);
 			break; // Exit the loop
 		}
