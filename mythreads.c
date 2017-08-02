@@ -150,6 +150,11 @@ struct ThreadPool {
 	 * the suspend state.
 	 */
 	unsigned short suspend;
+
+	/* Counter to the number of jobs
+	 * present in the job queue
+	 */
+	_Atomic unsigned long jobCount;
 };
 
 /* Prints the size of the job queue. Only
@@ -262,6 +267,8 @@ static void *threadExecutor(void *pl){
 
 			printf("\n[THREADPOOL:THREAD%u:INFO] Job recieved! Unlocking the mutex!", id);
 #endif
+			pool->jobCount--; // Decrement the count
+
 			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 
 #ifdef DEBUG
@@ -408,6 +415,7 @@ ThreadPool * createPool(unsigned int numThreads){
 	pool->suspend = 0;
 	pool->rearThreads = NULL;
 	pool->threads = NULL;
+	pool->jobCount = 0;
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Initializing mutexes!");
@@ -485,6 +493,8 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 	else // There are other jobs
 		pool->REAR->next = newJob;
 	pool->REAR = newJob; // This is the last job
+
+	pool->jobCount++; // Increment the count
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:EXEC:INFO] Inserted the job at the end of the queue!");
@@ -607,6 +617,13 @@ void resumePool(ThreadPool *pool){
 #ifdef DEBUG
 	printf("\n[THREADPOOL:RESM:INFO] Resume complete!");
 #endif
+}
+
+/* Returns number of pending jobs in the pool. See
+ * header for more details
+ */
+unsigned long getJobCount(ThreadPool *pool){
+	return pool->jobCount;
 }
 
 /* Destroy the pool. See header for more details.

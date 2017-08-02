@@ -149,4 +149,14 @@ void resumePool(ThreadPool *);
  */
 void removeThreadFromPool(ThreadPool *);
 
+/* Returns the number of pending jobs in the pool.
+ *
+ * This method returns the number of pending jobs in the 
+ * pool, at the instant of the issue of this call. This 
+ * denotes the number of jobs the pool will  finish before 
+ * idlement if no new jobs are added to the pool from this
+ * instant.
+ */
+unsigned long getJobCount(ThreadPool *pool);
+
 #endif
