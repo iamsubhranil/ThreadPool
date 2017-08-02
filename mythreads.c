@@ -281,6 +281,7 @@ static void *threadExecutor(void *pl){
 		pthread_mutex_unlock(&pool->queuemutex); // We broke the loop, release the mutex now
 #ifdef DEBUG
 		printf("\n[THREADPOOL:THREAD%u:INFO] Stopping now..", id);
+		fflush(stdout);
 #endif
 	}
 #ifdef DEBUG
