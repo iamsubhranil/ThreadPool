@@ -17,7 +17,7 @@
 #ifndef MYTHREADS_H
 #define MYTHREADS_H
 
-//#define DEBUG // The debug switch
+#define DEBUG // The debug switch
 
 /* The main pool structure
  * 
@@ -161,5 +161,15 @@ void removeThreadFromPool(ThreadPool *);
  * instant.
  */
 unsigned long getJobCount(ThreadPool *pool);
+
+/* Returns the number of threads present in the pool.
+ *
+ * The number returned by this method is aware of all
+ * thread addition and removal calls. Hence only the number 
+ * of threads that are "active" in the pool, either by 
+ * executing a worker function or in idle wait, will be
+ * returned by this method.
+ */
+unsigned int getThreadCount(ThreadPool *);
 
 #endif

@@ -638,6 +638,13 @@ unsigned long getJobCount(ThreadPool *pool){
 	return pool->jobCount;
 }
 
+/* Returns the number of threads in the pool. See
+ * header for more details.
+ */
+unsigned int getThreadCount(ThreadPool *pool){
+	return pool->numThreads;
+}
+
 /* Destroy the pool. See header for more details.
  *
  */

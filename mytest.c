@@ -33,15 +33,16 @@ int main(){
 	for(i=0;i<size;i++)
 		addJobToPool(pool, &longJob, NULL);
 	char choice = '1';
-	while(choice>='0' && choice<'8'){
+	while(choice>='0' && choice<'9'){
 		printf("\n[CHOICE:0] Add some jobs");
 		printf("\n[CHOICE:1] Get number of pending jobs");
 		printf("\n[CHOICE:2] Add another thread");
 		printf("\n[CHOICE:3] Remove an existing thread");
-		printf("\n[CHOICE:4] Wait for the pool to complete");
-		printf("\n[CHOICE:5] Suspend the pool");
-		printf("\n[CHOICE:6] Resume the pool");
-		printf("\n[CHOICE:7] Stop the pool");
+		printf("\n[CHOICE:4] Get number of threads in the pool");
+		printf("\n[CHOICE:5] Wait for the pool to complete");
+		printf("\n[CHOICE:6] Suspend the pool");
+		printf("\n[CHOICE:7] Resume the pool");
+		printf("\n[CHOICE:8] Stop the pool");
 		printf("\n[CHOICE:INPUT] ");
 		scanf(" %c", &choice);
 		switch(choice){
@@ -56,13 +57,15 @@ int main(){
 				  break;
 			case '3': removeThreadFromPool(pool);
 				  break;
-			case '4': waitToComplete(pool);
+			case '4': printf("\n[CHOICE:INFO] Number of threads %u", getThreadCount(pool));
 				  break;
-			case '5': suspendPool(pool);
+			case '5': waitToComplete(pool);
 				  break;
-			case '6': resumePool(pool);
+			case '6': suspendPool(pool);
 				  break;
-			case '7': destroyPool(pool);
+			case '7': resumePool(pool);
+				  break;
+			case '8': destroyPool(pool);
 				  return 0;
 			default: break;
 		}
