@@ -17,7 +17,7 @@
 #ifndef MYTHREADS_H
 #define MYTHREADS_H
 
-#define DEBUG // The debug switch
+//#define DEBUG // The debug switch
 
 /* The main pool structure
  * 
