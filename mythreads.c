@@ -153,6 +153,11 @@ struct ThreadPool {
 	 * present in the job queue
 	 */
 	_Atomic unsigned long jobCount;
+
+	/* Total size occupied by all objects
+	 * of the pool
+	 */
+	unsigned long bytes;
 };
 
 /* The core function which is executed in each thread.
@@ -253,7 +258,7 @@ static void *threadExecutor(void *pl){
 
 			printf("\n[THREADPOOL:THREAD%u:INFO] Job recieved! Unlocking the mutex!", id);
 #endif
-			
+			pool->bytes -= sizeof(Job);
 
 			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 
@@ -316,6 +321,11 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 	pthread_mutex_lock(&pool->condmutex);
 	pool->numThreads += threads; // Increment the thread count to prevent idle signal
 	pthread_mutex_unlock(&pool->condmutex);
+
+	pthread_mutex_lock(&pool->queuemutex);
+	pool->bytes += sizeof(ThreadList)*threads;
+	pthread_mutex_unlock(&pool->queuemutex);
+
 #ifdef DEBUG
 	printf("\n[THREADPOOL:ADD:INFO] Speculative increment done!");
 #endif
@@ -404,6 +414,7 @@ ThreadPool * createPool(unsigned int numThreads){
 	pool->rearThreads = NULL;
 	pool->threads = NULL;
 	pool->jobCount = 0;
+	pool->bytes = sizeof(ThreadPool);
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Initializing mutexes!");
@@ -484,7 +495,7 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 #endif
 
 	pthread_mutex_lock(&pool->queuemutex); // Inserting the job, lock the queue
-
+	pool->bytes += sizeof(Job);
 	if(pool->FRONT==NULL) // This is the first job
 		pool->FRONT = pool->REAR = newJob;
 	else // There are other jobs
@@ -632,6 +643,13 @@ unsigned long getJobCount(ThreadPool *pool){
  */
 unsigned int getThreadCount(ThreadPool *pool){
 	return pool->numThreads;
+}
+
+/* Get the total memory occupied by the
+ * pool. See header for more details.
+ */
+unsigned long occupiedMem(ThreadPool *pool){
+	return pool->bytes;
 }
 
 /* Destroy the pool. See header for more details.

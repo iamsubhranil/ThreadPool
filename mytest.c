@@ -33,7 +33,7 @@ int main(){
 	for(i=0;i<size;i++)
 		addJobToPool(pool, &longJob, NULL);
 	char choice = '1';
-	while(choice>='0' && choice<'9'){
+	while(choice>='0' && choice<='9'){
 		printf("\n[CHOICE:0] Add some jobs");
 		printf("\n[CHOICE:1] Get number of pending jobs");
 		printf("\n[CHOICE:2] Add another thread");
@@ -43,6 +43,7 @@ int main(){
 		printf("\n[CHOICE:6] Suspend the pool");
 		printf("\n[CHOICE:7] Resume the pool");
 		printf("\n[CHOICE:8] Stop the pool");
+		printf("\n[CHOICE:9] Get size of the pool");
 		printf("\n[CHOICE:INPUT] ");
 		scanf(" %c", &choice);
 		switch(choice){
@@ -67,6 +68,8 @@ int main(){
 				  break;
 			case '8': destroyPool(pool);
 				  return 0;
+			case '9': printf("[CHOICE:INFO] Size of the pool : %lu bytes", occupiedMem(pool));
+				  break;
 			default: break;
 		}
 	}

@@ -172,4 +172,15 @@ unsigned long getJobCount(ThreadPool *pool);
  */
 unsigned int getThreadCount(ThreadPool *);
 
+/* Get the total memory occupied by the pool.
+ *
+ * This method returns the total memory occupied by all
+ * objects of the pool at any instant, which are created 
+ * explicitly by the pool, including the pool itself. This
+ * method also keeps track of the objects freed at runtime,
+ * so you will only see the memory occupied for the objects
+ * that are still live in the pool.
+ */
+unsigned long occupiedMem(ThreadPool *);
+
 #endif
