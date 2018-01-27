@@ -14,11 +14,11 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<pthread.h> // The thread library
-#include<stdio.h> // Standard output functions in case of errors and debug
-#include<stdlib.h> // Memory management functions
-#include"mythreads.h" // API header
-
+#include <pthread.h> // The thread library
+#include <stdio.h> // Standard output functions in case of errors and debug
+#include <stdlib.h> // Memory management functions
+#include <inttypes.h> // Standard integer format specifiers
+#include "mythreads.h" // API header
 
 /* A singly linked list of threads. This list
  * gives tremendous flexibility managing the 
@@ -62,7 +62,7 @@ struct ThreadPool {
 	 * grow dynamically, access and modification 
 	 * of it is bounded by a mutex.
 	 */
-	unsigned int numThreads;
+	uint64_t numThreads;
 
 	/* The indicator which indicates the number
 	 * of threads to remove. If this is equal to
@@ -72,7 +72,7 @@ struct ThreadPool {
 	 * before executing a job, and if finds the 
 	 * value >0, immediately exits.
 	 */
-	unsigned int removeThreads;
+	uint64_t removeThreads;
 
 	/* Denotes the number of idle threads in the
 	 * pool at any given instant of time. This value
@@ -81,14 +81,14 @@ struct ThreadPool {
 	 * the initialization of the pool, whichever
 	 * applicable.
 	 */
-	volatile unsigned int waitingThreads;
+	volatile uint64_t waitingThreads;
 
 	/* Denotes whether the pool is presently
 	 * initalized or not. This variable is used to
 	 * busy wait after the creation of the pool
 	 * to ensure all threads are in waiting state.
 	 */
-	volatile unsigned short isInitialized;
+	volatile uint8_t isInitialized;
 
 	/* The main mutex for the job queue. All
 	 * operations on the queue is done after locking
@@ -115,13 +115,13 @@ struct ThreadPool {
 	 * it is set to 0, which happens when the pool
 	 * is destroyed.
 	 */
-	_Atomic unsigned short run;
+	_Atomic uint8_t run;
 
 	/* Used to assign unique thread IDs to each
 	 * running threads. It is an always incremental
 	 * counter.
 	 */
-	unsigned int threadID;
+	uint64_t threadID;
 
 	/* The FRONT of the job queue, which typically
 	 * points to the job to be executed next.
@@ -147,12 +147,12 @@ struct ThreadPool {
 	/* Variable to impose and withdraw
 	 * the suspend state.
 	 */
-	unsigned short suspend;
+	uint8_t suspend;
 
 	/* Counter to the number of jobs
 	 * present in the job queue
 	 */
-	_Atomic unsigned long jobCount;
+	_Atomic uint64_t jobCount;
 };
 
 /* The core function which is executed in each thread.
@@ -162,23 +162,28 @@ struct ThreadPool {
 static void *threadExecutor(void *pl){
 	ThreadPool *pool = (ThreadPool *)pl; // Get the pool
 	pthread_mutex_lock(&pool->queuemutex); // Lock the mutex
-	unsigned int id = ++pool->threadID; // Get an id
+	++pool->threadID; // Get an id
+
+#ifdef DEBUG
+    uint64_t id = pool->threadID;
+#endif
+
 	pthread_mutex_unlock(&pool->queuemutex); // Release the mutex
 
 #ifdef DEBUG
-	printf("\n[THREADPOOL:THREAD%u:INFO] Starting execution loop!", id);
+	printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Starting execution loop!", id);
 #endif
 	//Start the core execution loop
 	while(pool->run){ // run==1, we should get going
 #ifdef DEBUG
-		printf("\n[THREADPOOL:THREAD%u:INFO] Trying to lock the mutex!", id);
+		printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Trying to lock the mutex!", id);
 #endif
 
 		pthread_mutex_lock(&pool->queuemutex); //Lock the queue mutex
 
 		if(pool->removeThreads>0){ // A thread is needed to be removed
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Removal signalled! Exiting the execution loop!", id);
+			printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Removal signalled! Exiting the execution loop!", id);
 #endif
 			pthread_mutex_lock(&pool->condmutex);
 			pool->numThreads--;
@@ -190,31 +195,31 @@ static void *threadExecutor(void *pl){
 
 #ifdef DEBUG
 			if(presentJob==NULL)
-				printf("\n[THREADPOOL:THREAD%u:INFO] Queue is empty! Unlocking the mutex!", id);
+				printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Queue is empty! Unlocking the mutex!", id);
 			else
-				printf("\n[THREADPOOL:THREAD%u:INFO] Suspending thread!", id);
+				printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Suspending thread!", id);
 #endif
 			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 
 			pthread_mutex_lock(&pool->condmutex); // Hold the conditional mutex
 			pool->waitingThreads++; // Add yourself as a waiting thread
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Waiting threads %u!", id, pool->waitingThreads);
+			printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Waiting threads %" PRIu64 "!", id, pool->waitingThreads);
 #endif
 			if(!pool->suspend && pool->waitingThreads==pool->numThreads){ // All threads are idle
 #ifdef DEBUG
-				printf("\n[THREADPOOL:THREAD%u:INFO] All threads are idle now!", id);
+				printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] All threads are idle now!", id);
 #endif
 				if(pool->isInitialized){ // Pool is initialized, time to trigger the end conditional
 #ifdef DEBUG
-					printf("\n[THREADPOOL:THREAD%u:INFO] Signaling endconditional!" ,id);
+					printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Signaling endconditional!" ,id);
 					fflush(stdout);
 #endif
 					pthread_mutex_lock(&pool->endmutex); // Lock the mutex
 					pthread_cond_signal(&pool->endconditional); // Signal the end
 					pthread_mutex_unlock(&pool->endmutex); // Release the mutex
 #ifdef DEBUG
-					printf("\n[THREADPOOL:THREAD%u:INFO] Signalled any monitor!", id);
+					printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Signalled any monitor!", id);
 #endif
 				}
 				else // We are initializing the pool
@@ -224,7 +229,7 @@ static void *threadExecutor(void *pl){
 
 
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Going to conditional wait!", id);
+			printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Going to conditional wait!", id);
 			fflush(stdout);
 #endif
 			pthread_cond_wait(&pool->conditional, &pool->condmutex); // Idle wait on conditional
@@ -237,7 +242,7 @@ static void *threadExecutor(void *pl){
 			pthread_mutex_unlock(&pool->condmutex); // Woke up! Release the mutex
 
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Woke up from conditional wait!", id);
+			printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Woke up from conditional wait!", id);
 #endif			
 		}
 		else{ // There is a job in the pool
@@ -249,23 +254,23 @@ static void *threadExecutor(void *pl){
 				pool->REAR = NULL; // Reset the REAR
 #ifdef DEBUG
 			else
-				printf("\n[THREADPOOL:THREAD%u:INFO] Remaining jobs : %lu", id, pool->jobCount);
+				printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Remaining jobs : %" PRIu64, id, pool->jobCount);
 
-			printf("\n[THREADPOOL:THREAD%u:INFO] Job recieved! Unlocking the mutex!", id);
+			printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Job recieved! Unlocking the mutex!", id);
 #endif
 			
 
 			pthread_mutex_unlock(&pool->queuemutex); // Unlock the mutex
 
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Executing the job now!", id);
+			printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Executing the job now!", id);
 			fflush(stdout);
 #endif
 
 			presentJob->function(presentJob->args); // Execute the job
 
 #ifdef DEBUG
-			printf("\n[THREADPOOL:THREAD%u:INFO] Job completed! Releasing memory for the job!", id);
+			printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Job completed! Releasing memory for the job!", id);
 #endif
 
 			free(presentJob); // Release memory for the job
@@ -275,18 +280,18 @@ static void *threadExecutor(void *pl){
 	
 	if(pool->run){ // We exited, but the pool is running! It must be force removal!
 #ifdef DEBUG
-		printf("\n[THREADPOOL:THREAD%u:INFO] Releasing the lock!", id);
+		printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Releasing the lock!", id);
 #endif
 		pool->removeThreads--; // Alright, I'm shutting now
 		pthread_mutex_unlock(&pool->queuemutex); // We broke the loop, release the mutex now
 #ifdef DEBUG
-		printf("\n[THREADPOOL:THREAD%u:INFO] Stopping now..", id);
+		printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Stopping now..", id);
 		fflush(stdout);
 #endif
 	}
 #ifdef DEBUG
 	else // The pool is stopped
-		printf("\n[THREADPOOL:THREAD%u:INFO] Pool has been stopped! Exiting now..", id);
+		printf("\n[THREADPOOL:THREAD%" PRIu64 ":INFO] Pool has been stopped! Exiting now..", id);
 #endif
 
 	pthread_exit((void *)COMPLETED); // Exit
@@ -295,7 +300,7 @@ static void *threadExecutor(void *pl){
 /* This method adds 'threads' number of new threads
  * to the argument pool. See header for more details.
  */
-int addThreadsToPool(ThreadPool *pool, int threads){
+ThreadPoolStatus addThreadsToPool(ThreadPool *pool, uint64_t threads){
 	if(pool==NULL){ // Sanity check
 		printf("\n[THREADPOOL:ADD:ERROR] Pool is not initialized!");
 		return POOL_NOT_INITIALIZED;
@@ -304,12 +309,13 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 		printf("\n[THREADPOOL:ADD:ERROR] Pool already stopped!");
 		return POOL_STOPPED;
 	}
-	if(threads<1){
-		printf("\n[THREADPOOL:ADD:WARNING] Tried to add invalid number of threads %d!", threads);
+	if(threads < 1){
+		printf("\n[THREADPOOL:ADD:WARNING] Tried to add invalid number of threads %" PRIu64 "!", threads);
 		return INVALID_NUMBER;
 	}
 
-	int rc = 0;
+	int temp = 0;
+	ThreadPoolStatus rc = COMPLETED;
 #ifdef DEBUG
 	printf("\n[THREADPOOL:ADD:INFO] Holding the condmutex..");
 #endif
@@ -319,21 +325,23 @@ int addThreadsToPool(ThreadPool *pool, int threads){
 #ifdef DEBUG
 	printf("\n[THREADPOOL:ADD:INFO] Speculative increment done!");
 #endif
-	int i = 0;
-	for(i=0;i<threads;i++){
+	uint64_t i = 0;
+	for(i = 0;i < threads;i++){
 
 		ThreadList *newThread = (ThreadList *)malloc(sizeof(ThreadList)); // Allocate a new thread
 		newThread->next = NULL;
-		rc = pthread_create(&newThread->thread, NULL, threadExecutor, (void *)pool); // Start the thread
-		if(rc){
-			printf("\n[THREADPOOL:ADD:ERROR] Unable to create thread %d(error code %d)!", (i+1), rc);
+		temp = pthread_create(&newThread->thread, NULL, threadExecutor, (void *)pool); // Start the thread
+		if(temp){
+			printf("\n[THREADPOOL:ADD:ERROR] Unable to create thread %" PRIu64 "(error code %d)!", (i+1), temp);
 			pthread_mutex_lock(&pool->condmutex);
 			pool->numThreads--;
 			pthread_mutex_unlock(&pool->condmutex);
+			temp = 0;
+			rc = THREAD_CREATION_FAILED;
 		}
 		else{
 #ifdef DEBUG
-			printf("\n[THREADPOOL:ADD:INFO] Initialized thread %u!", (i+1));
+			printf("\n[THREADPOOL:ADD:INFO] Initialized thread %" PRIu64 "!", (i+1));
 #endif
 			if(pool->rearThreads==NULL) // This is the first thread
 				pool->threads = pool->rearThreads = newThread;
@@ -383,7 +391,7 @@ void removeThreadFromPool(ThreadPool *pool){
  * details.
  */
 
-ThreadPool * createPool(unsigned int numThreads){
+ThreadPool * createPool(uint64_t numThreads){
 	ThreadPool * pool = (ThreadPool *)malloc(sizeof(ThreadPool)); // Allocate memory for the pool
 	if(pool==NULL){ // Oops!
 		printf("[THREADPOOL:INIT:ERROR] Unable to allocate memory for the pool!");
@@ -391,7 +399,7 @@ ThreadPool * createPool(unsigned int numThreads){
 	}
 
 #ifdef DEBUG
-	printf("\n[THREADPOOL:INIT:INFO] Allocated %lu bytes for new pool!", sizeof(ThreadPool));
+	printf("\n[THREADPOOL:INIT:INFO] Allocated %zu bytes for new pool!", sizeof(ThreadPool));
 #endif
 	// Initialize members with default values
 	pool->numThreads = 0; 
@@ -424,7 +432,7 @@ ThreadPool * createPool(unsigned int numThreads){
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Successfully initialized all members of the pool!");
-	printf("\n[THREADPOOL:INIT:INFO] Initializing %u threads..",numThreads);
+	printf("\n[THREADPOOL:INIT:INFO] Initializing %" PRIu64 " threads..",numThreads);
 #endif
 	
 	if(numThreads<1){
@@ -451,7 +459,7 @@ ThreadPool * createPool(unsigned int numThreads){
  * details.
  *
  */
-int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
+ThreadPoolStatus addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 	if(pool==NULL || !pool->isInitialized){ // Sanity check
 		printf("\n[THREADPOOL:EXEC:ERROR] Pool is not initialized!");
 		return POOL_NOT_INITIALIZED;
@@ -472,7 +480,7 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 	}
 
 #ifdef DEBUG
-	printf("\n[THREADPOOL:EXEC:INFO] Allocated %lu bytes for new job!", sizeof(Job));
+	printf("\n[THREADPOOL:EXEC:INFO] Allocated %zu bytes for new job!", sizeof(Job));
 #endif
 
 	newJob->function = func; // Initialize the function
@@ -515,7 +523,7 @@ int addJobToPool(ThreadPool *pool, void (*func)(void *args), void *args){
 #ifdef DEBUG
 	printf("\n[THREADPOOL:EXEC:INFO] Unlocked the mutex!");
 #endif
-	return 0;
+	return COMPLETED;
 }
 
 /* Wait for the pool to finish executing. See header
@@ -623,14 +631,14 @@ void resumePool(ThreadPool *pool){
 /* Returns number of pending jobs in the pool. See
  * header for more details
  */
-unsigned long getJobCount(ThreadPool *pool){
+uint64_t getJobCount(ThreadPool *pool){
 	return pool->jobCount;
 }
 
 /* Returns the number of threads in the pool. See
  * header for more details.
  */
-unsigned int getThreadCount(ThreadPool *pool){
+uint64_t getThreadCount(ThreadPool *pool){
 	return pool->numThreads;
 }
 
@@ -659,27 +667,27 @@ void destroyPool(ThreadPool *pool){
 
 	ThreadList *list = pool->threads, *backup = NULL; // For travsersal
 
-	unsigned int i = 0;
-	while(list!=NULL){
+	uint64_t i = 0;
+	while(list != NULL){
 
 #ifdef DEBUG
-		printf("\n[THREADPOOL:EXIT:INFO] Joining thread %u..", i);
+		printf("\n[THREADPOOL:EXIT:INFO] Joining thread %" PRIu64 "..", i);
 #endif
 
 		rc = pthread_join(list->thread, NULL); //  Wait for ith thread to join
 		if(rc)
-			printf("\n[THREADPOOL:EXIT:WARNING] Unable to join THREAD%u!", i);
+			printf("\n[THREADPOOL:EXIT:WARNING] Unable to join THREAD%" PRIu64 "!", i);
 
 #ifdef DEBUG		
 		else
-			printf("\n[THREADPOOL:EXIT:INFO] THREAD%u joined!", i);
+			printf("\n[THREADPOOL:EXIT:INFO] THREAD%" PRIu64 " joined!", i);
 #endif
 
 		backup = list;
 		list = list->next; // Continue
 
 #ifdef DEBUG
-		printf("\n[THREADPOOL:EXIT:INFO] Releasing memory for THREAD%u..", i);
+		printf("\n[THREADPOOL:EXIT:INFO] Releasing memory for THREAD%" PRIu64 "..", i);
 #endif
 
 		free(backup); // Free ith thread

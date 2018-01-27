@@ -17,6 +17,8 @@
 #ifndef MYTHREADS_H
 #define MYTHREADS_H
 
+#include <stdint.h> // Standard integer
+
 //#define DEBUG // The debug switch
 
 /* The main pool structure
@@ -38,12 +40,13 @@ typedef enum Status{
 	SIGNALLING_FAILED,
 	BROADCASTING_FAILED,
 	COND_WAIT_FAILED,
+	THREAD_CREATION_FAILED,
 	POOL_NOT_INITIALIZED,
 	POOL_STOPPED,
 	INVALID_NUMBER,
 	WAIT_ISSUED,
 	COMPLETED	
-} Status;
+} ThreadPoolStatus;
 
 /* Creates a new thread pool with argument number of threads. 
  * 
@@ -55,7 +58,7 @@ typedef enum Status{
  * in case of insufficient memory, which is rare, and a NULL
  * is returned in that case.
  */
-ThreadPool * createPool(unsigned int);
+ThreadPool * createPool(uint64_t);
 
 /* Waits till all the threads in the pool are finished.
  *
@@ -93,7 +96,7 @@ void destroyPool(ThreadPool *);
  * When all threads are idle, any one of them wakes up and
  * executes this function asynchronously.
  */
-int addJobToPool(ThreadPool *, void (*func)(void *), void *);
+ThreadPoolStatus addJobToPool(ThreadPool *, void (*func)(void *), void *);
 
 /* Add some new threads to the pool.
  * 
@@ -108,7 +111,7 @@ int addJobToPool(ThreadPool *, void (*func)(void *), void *);
  * pthread_create, or for insufficient memory. These error 
  * codes can be compared using the Status enum above.
  */
-int addThreadsToPool(ThreadPool *, int);
+ThreadPoolStatus addThreadsToPool(ThreadPool *, uint64_t);
 
 /* Suspend all currently executing threads in the pool.
  *
@@ -160,7 +163,7 @@ void removeThreadFromPool(ThreadPool *);
  * idlement if no new jobs are added to the pool from this
  * instant.
  */
-unsigned long getJobCount(ThreadPool *pool);
+uint64_t getJobCount(ThreadPool *pool);
 
 /* Returns the number of threads present in the pool.
  *
@@ -170,6 +173,6 @@ unsigned long getJobCount(ThreadPool *pool);
  * executing a worker function or in idle wait, will be
  * returned by this method.
  */
-unsigned int getThreadCount(ThreadPool *);
+uint64_t getThreadCount(ThreadPool *);
 
 #endif
