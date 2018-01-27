@@ -412,6 +412,7 @@ ThreadPool * createPool(uint64_t numThreads){
 	pool->rearThreads = NULL;
 	pool->threads = NULL;
 	pool->jobCount = 0;
+    pool->threadID = 0;
 
 #ifdef DEBUG
 	printf("\n[THREADPOOL:INIT:INFO] Initializing mutexes!");
