@@ -28,11 +28,11 @@ int main() {
 	uint64_t size;
 	printf("\nEnter the number of threads to start from : ");
 	scanf("%" SCNu64, &size);
-	ThreadPool *pool = createPool(size);
+	ThreadPool *pool = mt_create_pool(size);
 	printf("\nEnter number of jobs : ");
 	scanf("%" SCNu64, &size);
 	uint64_t i = 0;
-	for(i = 0; i < size; i++) addJobToPool(pool, &longJob, NULL);
+	for(i = 0; i < size; i++) mt_add_job(pool, &longJob, NULL);
 	char choice = '1';
 	while(choice >= '0' && choice < '9') {
 		printf("\n[CHOICE:0] Add some jobs");
@@ -50,22 +50,22 @@ int main() {
 			case '0':
 				printf("\n[CHOICE:INPUT] Number of jobs : ");
 				scanf("%" SCNu64, &size);
-				for(i = 0; i < size; i++) addJobToPool(pool, &longJob, NULL);
+				for(i = 0; i < size; i++) mt_add_job(pool, &longJob, NULL);
 				break;
 			case '1':
 				printf("\n[CHOICE:INFO] Pending jobs %" PRIu64,
-				       getJobCount(pool));
+				       mt_get_job_count(pool));
 				break;
-			case '2': addThreadsToPool(pool, 1); break;
-			case '3': removeThreadFromPool(pool); break;
+			case '2': mt_add_thread(pool, 1); break;
+			case '3': mt_remove_thread(pool); break;
 			case '4':
 				printf("\n[CHOICE:INFO] Number of threads %" PRIu64,
-				       getThreadCount(pool));
+				       mt_get_thread_count(pool));
 				break;
-			case '5': waitToComplete(pool); break;
-			case '6': suspendPool(pool); break;
-			case '7': resumePool(pool); break;
-			case '8': destroyPool(pool); return 0;
+			case '5': mt_join(pool); break;
+			case '6': mt_suspend(pool); break;
+			case '7': mt_resume(pool); break;
+			case '8': mt_destroy_pool(pool); return 0;
 			default: break;
 		}
 	}

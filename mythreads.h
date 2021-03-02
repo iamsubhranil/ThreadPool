@@ -58,14 +58,14 @@ typedef enum Status {
  * in case of insufficient memory, which is rare, and a NULL
  * is returned in that case.
  */
-ThreadPool *createPool(uint64_t);
+ThreadPool *mt_create_pool(uint64_t);
 
 /* Waits till all the threads in the pool are finished.
  *
  * When this method returns, it is assured that all threads
  * in the pool have finished executing, and in waiting state.
  */
-void waitToComplete(ThreadPool *);
+void mt_join(ThreadPool *);
 
 /* Destroys the argument pool.
  *
@@ -80,7 +80,7 @@ void waitToComplete(ThreadPool *);
  * threads, destroys all synchronization objects, and frees
  * any remaining jobs, finally freeing the pool itself.
  */
-void destroyPool(ThreadPool *);
+void mt_destroy_pool(ThreadPool *);
 
 /* Add a new job to the pool.
  *
@@ -96,7 +96,7 @@ void destroyPool(ThreadPool *);
  * When all threads are idle, any one of them wakes up and
  * executes this function asynchronously.
  */
-ThreadPoolStatus addJobToPool(ThreadPool *, void (*func)(void *), void *);
+ThreadPoolStatus mt_add_job(ThreadPool *, void (*func)(void *), void *);
 
 /* Add some new threads to the pool.
  *
@@ -111,7 +111,7 @@ ThreadPoolStatus addJobToPool(ThreadPool *, void (*func)(void *), void *);
  * pthread_create, or for insufficient memory. These error
  * codes can be compared using the Status enum above.
  */
-ThreadPoolStatus addThreadsToPool(ThreadPool *, uint64_t);
+ThreadPoolStatus mt_add_thread(ThreadPool *, uint64_t);
 
 /* Suspend all currently executing threads in the pool.
  *
@@ -123,7 +123,7 @@ ThreadPoolStatus addThreadsToPool(ThreadPool *, uint64_t);
  * till the thread completes the present job, and then
  * halts the thread.
  */
-void suspendPool(ThreadPool *);
+void mt_suspend(ThreadPool *);
 
 /* Resume a suspended pool.
  *
@@ -133,7 +133,7 @@ void suspendPool(ThreadPool *);
  * wake up from suspend very soon in future. This method
  * fails if the pool was not previously suspended.
  */
-void resumePool(ThreadPool *);
+void mt_resume(ThreadPool *);
 
 /* Remove an existing thread from the pool.
  *
@@ -153,7 +153,7 @@ void resumePool(ThreadPool *);
  * the pool, the queue will automatically resume from the
  * position where it stopped.
  */
-void removeThreadFromPool(ThreadPool *);
+void mt_remove_thread(ThreadPool *);
 
 /* Returns the number of pending jobs in the pool.
  *
@@ -163,7 +163,7 @@ void removeThreadFromPool(ThreadPool *);
  * idlement if no new jobs are added to the pool from this
  * instant.
  */
-uint64_t getJobCount(ThreadPool *pool);
+uint64_t mt_get_job_count(ThreadPool *pool);
 
 /* Returns the number of threads present in the pool.
  *
@@ -173,6 +173,6 @@ uint64_t getJobCount(ThreadPool *pool);
  * executing a worker function or in idle wait, will be
  * returned by this method.
  */
-uint64_t getThreadCount(ThreadPool *);
+uint64_t mt_get_thread_count(ThreadPool *);
 
 #endif

@@ -333,7 +333,7 @@ static void *threadExecutor(void *pl) {
 /* This method adds 'threads' number of new threads
  * to the argument pool. See header for more details.
  */
-ThreadPoolStatus addThreadsToPool(ThreadPool *pool, uint64_t threads) {
+ThreadPoolStatus mt_add_thread(ThreadPool *pool, uint64_t threads) {
 	if(pool == NULL) { // Sanity check
 		printf("\n[THREADPOOL:ADD:ERROR] Pool is not initialized!");
 		return POOL_NOT_INITIALIZED;
@@ -397,7 +397,7 @@ ThreadPoolStatus addThreadsToPool(ThreadPool *pool, uint64_t threads) {
 /* This method removes one thread from the
  * argument pool. See header for more details.
  */
-void removeThreadFromPool(ThreadPool *pool) {
+void mt_remove_thread(ThreadPool *pool) {
 	if(pool == NULL || !pool->isInitialized) {
 		printf("\n[THREADPOOL:REM:ERROR] Pool is not initialized!");
 		return;
@@ -433,7 +433,7 @@ void removeThreadFromPool(ThreadPool *pool) {
  * details.
  */
 
-ThreadPool *createPool(uint64_t numThreads) {
+ThreadPool *mt_create_pool(uint64_t numThreads) {
 	ThreadPool *pool = (ThreadPool *)malloc(
 	    sizeof(ThreadPool)); // Allocate memory for the pool
 	if(pool == NULL) {       // Oops!
@@ -489,7 +489,7 @@ ThreadPool *createPool(uint64_t numThreads) {
 		printf("\n[THREADPOOL:INIT:WARNING] Starting with no threads!");
 		pool->isInitialized = 1;
 	} else {
-		addThreadsToPool(pool, numThreads); // Add threads to the pool
+		mt_add_thread(pool, numThreads); // Add threads to the pool
 #ifdef DEBUG
 		printf("\n[THREADPOOL:INIT:INFO] Waiting for all threads to start..");
 #endif
@@ -509,7 +509,7 @@ ThreadPool *createPool(uint64_t numThreads) {
  * details.
  *
  */
-ThreadPoolStatus addJobToPool(ThreadPool *pool, void (*func)(void *args),
+ThreadPoolStatus mt_add_job(ThreadPool *pool, void (*func)(void *args),
                               void *      args) {
 	if(pool == NULL || !pool->isInitialized) { // Sanity check
 		printf("\n[THREADPOOL:EXEC:ERROR] Pool is not initialized!");
@@ -588,7 +588,7 @@ ThreadPoolStatus addJobToPool(ThreadPool *pool, void (*func)(void *args),
 /* Wait for the pool to finish executing. See header
  * for more details.
  */
-void waitToComplete(ThreadPool *pool) {
+void mt_join(ThreadPool *pool) {
 	if(pool == NULL || !pool->isInitialized) { // Sanity check
 		printf("\n[THREADPOOL:WAIT:ERROR] Pool is not initialized!");
 		return;
@@ -626,7 +626,7 @@ void waitToComplete(ThreadPool *pool) {
 /* Suspend all active threads in a pool. See header
  * for more details.
  */
-void suspendPool(ThreadPool *pool) {
+void mt_suspend(ThreadPool *pool) {
 	if(pool == NULL || !pool->isInitialized) { // Sanity check
 		printf("\n[THREADPOOL:SUSP:ERROR] Pool is not initialized!");
 		return;
@@ -660,7 +660,7 @@ void suspendPool(ThreadPool *pool) {
 /* Resume a suspended pool. See header for more
  * details.
  */
-void resumePool(ThreadPool *pool) {
+void mt_resume(ThreadPool *pool) {
 	if(pool == NULL || !pool->isInitialized) { // Sanity check
 		printf("\n[THREADPOOL:RESM:ERROR] Pool is not initialized!");
 		return;
@@ -692,21 +692,21 @@ void resumePool(ThreadPool *pool) {
 /* Returns number of pending jobs in the pool. See
  * header for more details
  */
-uint64_t getJobCount(ThreadPool *pool) {
+uint64_t mt_get_job_count(ThreadPool *pool) {
 	return pool->jobCount;
 }
 
 /* Returns the number of threads in the pool. See
  * header for more details.
  */
-uint64_t getThreadCount(ThreadPool *pool) {
+uint64_t mt_get_thread_count(ThreadPool *pool) {
 	return pool->numThreads;
 }
 
 /* Destroy the pool. See header for more details.
  *
  */
-void destroyPool(ThreadPool *pool) {
+void mt_destroy_pool(ThreadPool *pool) {
 	if(pool == NULL || !pool->isInitialized) { // Sanity check
 		printf("\n[THREADPOOL:EXIT:ERROR] Pool is not initialized!");
 		return;
