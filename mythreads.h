@@ -22,18 +22,18 @@
 //#define DEBUG // The debug switch
 
 /* The main pool structure
- * 
+ *
  * To find member descriptions, see mythreads.c .
  */
 typedef struct ThreadPool ThreadPool;
 
 /* The status enum to indicate any failure.
- * 
+ *
  * These values can be compared to all the functions
  * that returns an integer, to findout the status of
  * the execution of the function.
  */
-typedef enum Status{
+typedef enum Status {
 	MEMORY_UNAVAILABLE,
 	QUEUE_LOCK_FAILED,
 	QUEUE_UNLOCK_FAILED,
@@ -45,20 +45,20 @@ typedef enum Status{
 	POOL_STOPPED,
 	INVALID_NUMBER,
 	WAIT_ISSUED,
-	COMPLETED	
+	COMPLETED
 } ThreadPoolStatus;
 
-/* Creates a new thread pool with argument number of threads. 
- * 
- * When this method returns, and if the return value is not 
- * NULL, it is assured that all threads are initialized and 
- * in waiting state. If any thread fails to initialize, 
- * typically if the pthread_create method fails, a warning 
+/* Creates a new thread pool with argument number of threads.
+ *
+ * When this method returns, and if the return value is not
+ * NULL, it is assured that all threads are initialized and
+ * in waiting state. If any thread fails to initialize,
+ * typically if the pthread_create method fails, a warning
  * message is print on the stdout. This method also can fail
  * in case of insufficient memory, which is rare, and a NULL
  * is returned in that case.
  */
-ThreadPool * createPool(uint64_t);
+ThreadPool *createPool(uint64_t);
 
 /* Waits till all the threads in the pool are finished.
  *
@@ -99,16 +99,16 @@ void destroyPool(ThreadPool *);
 ThreadPoolStatus addJobToPool(ThreadPool *, void (*func)(void *), void *);
 
 /* Add some new threads to the pool.
- * 
- * This function adds specified number of new threads to the 
- * argument threadpool. When this function returns, it is 
- * ensured that a new thread has been added to the pool. 
- * However, this new thread will only come to effect if there 
- * are remainder jobs, that is the job queue is not presently 
- * empty. This new thread will not steal any running jobs 
- * from the running threads. Occasionally, this method will 
- * return some error codes, typically due to the failure of 
- * pthread_create, or for insufficient memory. These error 
+ *
+ * This function adds specified number of new threads to the
+ * argument threadpool. When this function returns, it is
+ * ensured that a new thread has been added to the pool.
+ * However, this new thread will only come to effect if there
+ * are remainder jobs, that is the job queue is not presently
+ * empty. This new thread will not steal any running jobs
+ * from the running threads. Occasionally, this method will
+ * return some error codes, typically due to the failure of
+ * pthread_create, or for insufficient memory. These error
  * codes can be compared using the Status enum above.
  */
 ThreadPoolStatus addThreadsToPool(ThreadPool *, uint64_t);
@@ -127,10 +127,10 @@ void suspendPool(ThreadPool *);
 
 /* Resume a suspended pool.
  *
- * This method resumes a pool, aynchronously, if and only 
+ * This method resumes a pool, aynchronously, if and only
  * if the pool was suspended before. When the method returns,
  * it is guaranteed the all the threads of the pool will
- * wake up from suspend very soon in future. This method 
+ * wake up from suspend very soon in future. This method
  * fails if the pool was not previously suspended.
  */
 void resumePool(ThreadPool *);
@@ -157,9 +157,9 @@ void removeThreadFromPool(ThreadPool *);
 
 /* Returns the number of pending jobs in the pool.
  *
- * This method returns the number of pending jobs in the 
- * pool, at the instant of the issue of this call. This 
- * denotes the number of jobs the pool will  finish before 
+ * This method returns the number of pending jobs in the
+ * pool, at the instant of the issue of this call. This
+ * denotes the number of jobs the pool will  finish before
  * idlement if no new jobs are added to the pool from this
  * instant.
  */
@@ -168,8 +168,8 @@ uint64_t getJobCount(ThreadPool *pool);
 /* Returns the number of threads present in the pool.
  *
  * The number returned by this method is aware of all
- * thread addition and removal calls. Hence only the number 
- * of threads that are "active" in the pool, either by 
+ * thread addition and removal calls. Hence only the number
+ * of threads that are "active" in the pool, either by
  * executing a worker function or in idle wait, will be
  * returned by this method.
  */
